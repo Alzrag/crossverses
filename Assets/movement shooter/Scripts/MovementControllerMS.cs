@@ -13,6 +13,12 @@ public class MovementControllerMS : MonoBehaviour
   private int jumpsLeft;
   public bool isGrounded;
   public bool isWalled;
+  public int dashes;
+  public float breakingStrength;
+  public float dashStrength;
+  public int dashesLeft;
+  public float cooldown;
+  public float dashCoolDown;
   Vector3 wallNormal;
 
   // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -41,6 +47,8 @@ public class MovementControllerMS : MonoBehaviour
     }
   }
 
+  
+
   void OnCollisionExit(Collision Other){
     isGrounded=false;
     isWalled=false;
@@ -50,6 +58,15 @@ public class MovementControllerMS : MonoBehaviour
   void Update()
   {
     float speed;
+    if (dashesLeft<dashes){
+      cooldown -= Time.deltaTime;
+    } else {
+      cooldown=dashCoolDown;
+    }
+    if (cooldown<=0){
+      cooldown=dashCoolDown;
+      dashesLeft++;
+    }
     
     if (jumpsLeft>0&&Input.GetKeyDown(KeyCode.Space)){
       if (isWalled&& !isGrounded){
@@ -62,33 +79,68 @@ public class MovementControllerMS : MonoBehaviour
       jumpsLeft--;
     }
 
+    if (Input.GetKeyDown(KeyCode.LeftAlt)&&Input.GetKey(KeyCode.W)&&dashesLeft>0){
+      rb.AddRelativeForce(Vector3.forward*dashStrength, ForceMode.Impulse);
+      dashesLeft--;
+    }
+    if (Input.GetKeyDown(KeyCode.LeftAlt)&&Input.GetKey(KeyCode.A)&&dashesLeft>0){
+      rb.AddRelativeForce(Vector3.left*dashStrength, ForceMode.Impulse);
+      dashesLeft--;
+    }
+    if (Input.GetKeyDown(KeyCode.LeftAlt)&&Input.GetKey(KeyCode.S)&&dashesLeft>0){
+      rb.AddRelativeForce(Vector3.back*dashStrength, ForceMode.Impulse);
+      dashesLeft--;
+    }
+    if (Input.GetKeyDown(KeyCode.LeftAlt)&&Input.GetKey(KeyCode.D)&&dashesLeft>0){
+      rb.AddRelativeForce(Vector3.right*dashStrength, ForceMode.Impulse);
+      dashesLeft--;
+    }
+
     if (Input.GetKey(KeyCode.LeftShift)){
       speed=baseSpeed*2;
     } else {
       speed =baseSpeed;
     }
-    if (Input.GetKey(KeyCode.W)){
+
+    if (Input.GetKey(KeyCode.W)&&(isGrounded||isWalled)){
       rb.AddRelativeForce(Vector3.forward * speed*Time.deltaTime, ForceMode.VelocityChange);
+    } else if (Input.GetKey(KeyCode.W)&&!(isGrounded||isWalled)&&(speed<maxSpeed*3f)){
+      rb.AddRelativeForce(Vector3.forward * speed/4f*Time.deltaTime, ForceMode.VelocityChange);
     }
-    if (Input.GetKey(KeyCode.A)){
+    if (Input.GetKey(KeyCode.A)&&(isGrounded||isWalled)){
       rb.AddRelativeForce(Vector3.left*speed*Time.deltaTime, ForceMode.VelocityChange);
+    } else if (Input.GetKey(KeyCode.A)&&!(isGrounded||isWalled)&&(speed<maxSpeed*3f)){
+      rb.AddRelativeForce(Vector3.left * speed/4f*Time.deltaTime, ForceMode.VelocityChange);
     }
-    if (Input.GetKey(KeyCode.S)){
+    if (Input.GetKey(KeyCode.S)&&(isGrounded||isWalled)){
       rb.AddRelativeForce(Vector3.back*speed*Time.deltaTime, ForceMode.VelocityChange);
+    } else if (Input.GetKey(KeyCode.S)&&!(isGrounded||isWalled)&&(speed<maxSpeed*3f)){
+      rb.AddRelativeForce(Vector3.back * speed/4f*Time.deltaTime, ForceMode.VelocityChange);
     }
-    if (Input.GetKey(KeyCode.D)){
+    if (Input.GetKey(KeyCode.D)&&(isGrounded||isWalled)){
       rb.AddRelativeForce(Vector3.right*speed*Time.deltaTime, ForceMode.VelocityChange);
+    } else if (Input.GetKey(KeyCode.D)&&!(isGrounded||isWalled)&&(speed<maxSpeed*3f)){
+      rb.AddRelativeForce(Vector3.right * speed/4f*Time.deltaTime, ForceMode.VelocityChange);
     }
 
 
-    Vector3 horizontal = Vector3.ClampMagnitude(new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z),maxSpeed);
-    rb.linearVelocity=new Vector3(horizontal.x,rb.linearVelocity.y,horizontal.z);
+    if (isGrounded){
+      float speeds = (new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z)).magnitude;
+      if (speeds >maxSpeed) {
+        rb.AddForce(-(new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z)).normalized * ((speeds - maxSpeed)/maxSpeed)*breakingStrength, ForceMode.Acceleration);
+      }
+    } else if (isWalled){
+      float speeds = (new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z)).magnitude;
+      if (speeds >maxSpeed) {
+        rb.AddForce(-(new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z)).normalized * ((speeds - maxSpeed)/maxSpeed)*breakingStrength/2f, ForceMode.Acceleration);
+      }
+    }
   }
 
   void FixedUpdate(){
     rb.AddForce(Physics.gravity*0.5f*rb.mass);
-    if (isWalled&& !isGrounded){
-      rb.AddForce(Physics.gravity*-1.5f*rb.mass);
+    if (isWalled&&!isGrounded){
+      rb.AddForce(Physics.gravity*-1.25f*rb.mass);
       rb.AddForce(-wallNormal*50f);
     }
   }
